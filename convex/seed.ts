@@ -1,4 +1,5 @@
 import { mutation } from "./_generated/server";
+import { v } from "convex/values";
 
 export const seedCustomsFees = mutation({
   args: {},
@@ -167,5 +168,86 @@ export const seedSampleTnved = mutation({
     }
 
     return `Seeded ${samples.length} TNVED codes with tariffs`;
+  },
+});
+
+// ── Batch load TNVED from scraped data ──────────────────────────────
+
+export const seedTnvedBatch = mutation({
+  args: {
+    catalog: v.array(
+      v.object({
+        code: v.string(),
+        nameShort: v.string(),
+        nameFull: v.string(),
+        examples: v.array(v.string()),
+        searchTokens: v.array(v.string()),
+      }),
+    ),
+    tariffs: v.array(
+      v.object({
+        tnvedCode: v.string(),
+        source: v.union(v.literal("TKS"), v.literal("TWS"), v.literal("IFCG")),
+        dutyType: v.union(
+          v.literal("advalorem"),
+          v.literal("specific"),
+          v.literal("combined"),
+        ),
+        dutyRate: v.number(),
+        dutySpecific: v.optional(v.number()),
+        dutyUnit: v.optional(v.string()),
+        vatRate: v.union(v.literal(22), v.literal(10), v.literal(0)),
+        needsCertification: v.boolean(),
+        needsMarking: v.boolean(),
+        validFrom: v.string(),
+        fetchedAt: v.number(),
+        rawPayload: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    let inserted = 0;
+    let skippedDupes = 0;
+
+    for (let i = 0; i < args.catalog.length; i++) {
+      const cat = args.catalog[i];
+      const tar = args.tariffs[i];
+
+      // Check if code already exists in catalog
+      const existingCatalog = await ctx.db
+        .query("tnvedCatalog")
+        .withIndex("by_code", (q) => q.eq("code", cat.code))
+        .first();
+
+      if (existingCatalog) {
+        skippedDupes++;
+        continue;
+      }
+
+      await ctx.db.insert("tnvedCatalog", cat);
+      await ctx.db.insert("tnvedTariffs", tar);
+      inserted++;
+    }
+
+    return `Inserted ${inserted}, skipped ${skippedDupes} dupes`;
+  },
+});
+
+export const clearTnvedData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Clear all catalog entries
+    const catalogEntries = await ctx.db.query("tnvedCatalog").collect();
+    for (const entry of catalogEntries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    // Clear all tariff entries
+    const tariffEntries = await ctx.db.query("tnvedTariffs").collect();
+    for (const entry of tariffEntries) {
+      await ctx.db.delete(entry._id);
+    }
+
+    return `Deleted ${catalogEntries.length} catalog + ${tariffEntries.length} tariff entries`;
   },
 });

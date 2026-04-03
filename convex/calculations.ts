@@ -601,7 +601,7 @@ export const runCalculation = internalAction({
           vatRate: t.vatRate as number,
           needsCertification: t.needsCertification as boolean,
           needsMarking: t.needsMarking as boolean,
-          source: t.source as "TKS" | "TWS",
+          source: t.source as "TKS" | "TWS" | "IFCG",
           fetchedAt: t.fetchedAt as number,
         });
         if ((t as Record<string, unknown>)._fallback) {

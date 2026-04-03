@@ -30,7 +30,7 @@ export default defineSchema({
   // 3. Tariff data, versioned with source
   tnvedTariffs: defineTable({
     tnvedCode: v.string(),
-    source: v.union(v.literal("TKS"), v.literal("TWS")),
+    source: v.union(v.literal("TKS"), v.literal("TWS"), v.literal("IFCG")),
     sourceModule: v.optional(v.string()),
     dutyType: v.union(
       v.literal("advalorem"),

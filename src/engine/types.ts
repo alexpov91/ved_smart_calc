@@ -21,7 +21,7 @@ export interface TariffSnapshot {
   vatRate: number;               // 22, 10, or 0
   needsCertification: boolean;
   needsMarking: boolean;
-  source: "TKS" | "TWS";
+  source: "TKS" | "TWS" | "IFCG";
   fetchedAt: number;
 }
 

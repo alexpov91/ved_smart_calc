@@ -179,7 +179,22 @@ export default function CalculatorPage() {
   const calcOutput: CalculationOutput | null =
     calculation?.totals && (convexStatus === "completed" || convexStatus === "error")
       ? {
-          itemResults: [], // item-level results not shown in panel currently
+          itemResults: (calcItems ?? [])
+            .filter((ci) => ci.result != null)
+            .map((ci) => ({
+              itemId: ci._id,
+              customsValue: ci.result!.customsValue,
+              duty: ci.result!.duty,
+              antidumping: ci.result!.antidumping,
+              excise: ci.result!.excise,
+              vat: ci.result!.vat,
+              customsFee: ci.result!.customsFee,
+              totalCustoms: ci.result!.totalCustoms,
+              landedCost: ci.result!.landedCost,
+              landedCostPerUnit: ci.result!.landedCostPerUnit,
+              allocatedFreight: ci.allocatedFreight,
+              allocatedInsurance: ci.allocatedInsurance,
+            })),
           totals: calculation.totals as CalculationOutput["totals"],
           warnings: (calculation.warnings ?? []) as CalculationOutput["warnings"],
           errors: (calculation.errors ?? []) as CalculationOutput["errors"],

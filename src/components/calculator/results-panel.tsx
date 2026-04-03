@@ -93,7 +93,18 @@ export function ResultsPanel({
 
             <ResultsBreakdown
               totals={calculation.totals}
-              logistics={logistics}
+              logistics={{
+                ...logistics,
+                // Override freight/insurance with RUB values from engine results
+                freight: calculation.itemResults.reduce(
+                  (sum, r) => sum + (r.allocatedFreight ?? 0),
+                  0,
+                ) || undefined,
+                insurance: calculation.itemResults.reduce(
+                  (sum, r) => sum + (r.allocatedInsurance ?? 0),
+                  0,
+                ) || undefined,
+              }}
             />
 
             {calculation.warnings.length > 0 && (

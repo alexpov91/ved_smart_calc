@@ -234,7 +234,7 @@ export const requestPdf = action({
     try {
       // 4. Generate PDF using jspdf
       const { jsPDF } = await import("jspdf");
-      const { ROBOTO_REGULAR_BASE64 } = await import("./fonts/roboto-regular");
+      const { ROBOTO_REGULAR_BASE64 } = await import("./fonts/robotoRegular");
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
       // Register Cyrillic font
