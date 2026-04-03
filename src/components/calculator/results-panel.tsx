@@ -103,6 +103,7 @@ export function ResultsPanel({
             <ExportButtons
               calculationId={calculationId}
               onSave={onSave}
+              canExportFiles={status === "completed"}
             />
           </>
         )}

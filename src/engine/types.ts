@@ -84,6 +84,8 @@ export interface ItemResult {
   totalCustoms: number;
   landedCost: number;
   landedCostPerUnit: number;
+  allocatedFreight?: number;     // RUB — freight share allocated to this item
+  allocatedInsurance?: number;   // RUB — insurance share allocated to this item
 }
 
 export interface CalculationOutput {

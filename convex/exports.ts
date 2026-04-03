@@ -6,6 +6,7 @@ import {
   internalMutation,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { getUserId } from "./helpers/auth";
 import { assertCalculationOwner } from "./helpers/ownership";
 import type { Id } from "./_generated/dataModel";
@@ -170,10 +171,9 @@ function shortId(): string {
 export const requestPdf = action({
   args: { calculationId: v.id("calculations") },
   handler: async (ctx, args): Promise<Id<"exports">> => {
-    // Auth: actions don't have ctx.db, so we need to use auth
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    // Auth: use getAuthUserId which works with any ctx that has .auth
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
 
     // 1. Load data
     const data = await ctx.runQuery(internal.exports.getExportData, {
@@ -436,10 +436,9 @@ export const requestPdf = action({
 export const requestXlsx = action({
   args: { calculationId: v.id("calculations") },
   handler: async (ctx, args): Promise<Id<"exports">> => {
-    // Auth
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const userId = identity.subject;
+    // Auth: use getAuthUserId which works with any ctx that has .auth
+    const userId = await getAuthUserId(ctx);
+    if (!userId) throw new Error("Not authenticated");
 
     // 1. Load data
     const data = await ctx.runQuery(internal.exports.getExportData, {

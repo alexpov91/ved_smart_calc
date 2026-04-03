@@ -1,7 +1,8 @@
 import { v } from "convex/values";
-import { query, mutation, internalAction, internalQuery, internalMutation } from "./_generated/server";
-import { internal } from "./_generated/api";
-import type { Doc } from "./_generated/dataModel";
+import { query, mutation, action, internalAction, internalQuery, internalMutation } from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+import type { Doc, Id } from "./_generated/dataModel";
 import { getUserId } from "./helpers/auth";
 import { assertCalculationOwner } from "./helpers/ownership";
 import { calculateDirect } from "../src/engine/direct";
@@ -20,6 +21,27 @@ import type {
   Warning,
   EngineError,
 } from "../src/engine/types";
+
+// ── Private helpers ──────────────────────────────────────────────────
+
+/**
+ * Mark all ready/processing exports for a calculation as stale.
+ * Call whenever a completed calculation's input data changes.
+ */
+async function markExportsStale(
+  ctx: MutationCtx,
+  calculationId: Id<"calculations">,
+): Promise<void> {
+  const exports = await ctx.db
+    .query("exports")
+    .withIndex("by_calculationId", (q) => q.eq("calculationId", calculationId))
+    .collect();
+  for (const exp of exports) {
+    if (exp.status === "ready" || exp.status === "processing") {
+      await ctx.db.patch(exp._id, { status: "stale" as const });
+    }
+  }
+}
 
 // ── Queries ──────────────────────────────────────────────────────────
 
@@ -194,6 +216,7 @@ export const updateLogistics = mutation({
     const userId = await getUserId(ctx);
     await assertCalculationOwner(ctx, args.calculationId, userId);
     await ctx.db.patch(args.calculationId, { logistics: args.logistics });
+    await markExportsStale(ctx, args.calculationId);
   },
 });
 
@@ -222,6 +245,7 @@ export const updateMeta = mutation({
     if (args.retailParams !== undefined) updates.retailParams = args.retailParams;
 
     await ctx.db.patch(args.calculationId, updates);
+    await markExportsStale(ctx, args.calculationId);
   },
 });
 
@@ -236,6 +260,7 @@ export const setDistributionMethod = mutation({
     await ctx.db.patch(args.calculationId, {
       distributionMethod: args.method,
     });
+    await markExportsStale(ctx, args.calculationId);
   },
 });
 
@@ -297,17 +322,57 @@ export const remove = mutation({
     const userId = await getUserId(ctx);
     await assertCalculationOwner(ctx, args.id, userId);
 
-    // Delete all items first
+    // Delete all items
     const items = await ctx.db
       .query("calculationItems")
       .withIndex("by_calculationId", (q) => q.eq("calculationId", args.id))
       .collect();
-
     for (const item of items) {
       await ctx.db.delete(item._id);
     }
 
+    // Delete all exports + their storage files
+    const relatedExports = await ctx.db
+      .query("exports")
+      .withIndex("by_calculationId", (q) => q.eq("calculationId", args.id))
+      .collect();
+    for (const exp of relatedExports) {
+      if (exp.storageId) {
+        await ctx.storage.delete(exp.storageId as Id<"_storage">);
+      }
+      await ctx.db.delete(exp._id);
+    }
+
     await ctx.db.delete(args.id);
+  },
+});
+
+// ── Recalculate (re-fetch fresh data, then run) ─────────────────────
+
+/**
+ * Like requestCalculation, but first refreshes CBR exchange rates and
+ * triggers TKS tariff refresh for all items in the calculation.
+ * Use when you want the most current rates/tariffs rather than cached data.
+ */
+export const recalculate = action({
+  args: { calculationId: v.id("calculations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    // 1. Refresh CBR exchange rates
+    await ctx.runAction(internal.cbr.fetchRatesCron);
+
+    // 2. Refresh tariffs for each unique tnved code in this calculation
+    //    (tks.refreshStaleTariffs runs all stale ones; for a targeted refresh
+    //     we call getTariff per item, but TKS is currently stubbed so just
+    //     log the intent — the actual refresh happens via the cron or full scan)
+    await ctx.runAction(internal.tks.refreshStaleTariffs);
+
+    // 3. Trigger the calculation with fresh data
+    await ctx.runMutation(api.calculations.requestCalculation, {
+      calculationId: args.calculationId,
+    });
   },
 });
 
@@ -728,16 +793,9 @@ export const runCalculation = internalAction({
           totalCustoms: reverseOutput.itemResult.totalCustoms,
           landedCost: reverseOutput.itemResult.landedCost,
         };
+        // reverseOutput.warnings already contains REVERSE_NOT_CONVERGED if not converged
         engineWarnings = reverseOutput.warnings;
         engineErrors = [];
-
-        if (!reverseOutput.converged) {
-          engineWarnings.push({
-            code: "REVERSE_NOT_CONVERGED",
-            level: "critical",
-            message: `Обратный расчёт не сошёлся за ${reverseOutput.iterations} итераций`,
-          });
-        }
       } else {
         // Direct mode
         if (fxErrors.length > 0) {
@@ -801,8 +859,8 @@ export const runCalculation = internalAction({
           appliedAntidumpingRate: adMatch?.rate ?? undefined,
           tariffSource: tariff?.source ?? undefined,
           tariffFetchedAt: tariff?.fetchedAt ?? undefined,
-          allocatedFreight: undefined as number | undefined,
-          allocatedInsurance: undefined as number | undefined,
+          allocatedFreight: result?.allocatedFreight ?? undefined,
+          allocatedInsurance: result?.allocatedInsurance ?? undefined,
           allocationMethod: calculation.distributionMethod,
           result: result ? {
             customsValue: result.customsValue,
@@ -870,6 +928,8 @@ export const applyResult = internalMutation({
       totalCustoms: v.number(),
       landedCost: v.number(),
       landedCostPerUnit: v.number(),
+      allocatedFreight: v.optional(v.number()),
+      allocatedInsurance: v.optional(v.number()),
     })),
     totals: v.object({
       customsValue: v.number(),

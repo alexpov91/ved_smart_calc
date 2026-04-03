@@ -10,6 +10,8 @@ interface ExportButtonsProps {
   calculationId?: Id<"calculations"> | null;
   onSave?: () => void;
   loadingSave?: boolean;
+  /** Only "completed" calculations can be exported */
+  canExportFiles?: boolean;
 }
 
 interface ExportBtnProps {
@@ -46,6 +48,7 @@ export function ExportButtons({
   calculationId,
   onSave,
   loadingSave,
+  canExportFiles = true,
 }: ExportButtonsProps) {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingXlsx, setLoadingXlsx] = useState(false);
@@ -107,7 +110,7 @@ export function ExportButtons({
     }
   }, [calculationId, requestXlsx]);
 
-  const canExport = !!calculationId;
+  const canExport = !!calculationId && canExportFiles;
 
   return (
     <div className="flex gap-2">
