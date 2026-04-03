@@ -236,5 +236,7 @@ export default defineSchema({
     templateVersion: v.optional(v.string()),
     createdAt: v.number(),
     readyAt: v.optional(v.number()),
-  }).index("by_calculationId", ["calculationId"]),
+  })
+    .index("by_calculationId", ["calculationId"])
+    .index("by_userId", ["userId"]),
 });

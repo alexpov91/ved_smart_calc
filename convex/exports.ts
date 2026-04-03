@@ -175,6 +175,17 @@ export const requestPdf = action({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
+    // Rate limit: max 5 exports per hour
+    const rateCheck = await ctx.runQuery(
+      internal.exports.checkExportRateLimitInternal,
+      { userId },
+    );
+    if (rateCheck.limited) {
+      throw new Error(
+        "Превышен лимит: максимум 5 экспорт за 1 ч. Попробуйте позже.",
+      );
+    }
+
     // 1. Load data
     const data = await ctx.runQuery(internal.exports.getExportData, {
       calculationId: args.calculationId,
@@ -223,7 +234,13 @@ export const requestPdf = action({
     try {
       // 4. Generate PDF using jspdf
       const { jsPDF } = await import("jspdf");
+      const { ROBOTO_REGULAR_BASE64 } = await import("./fonts/roboto-regular");
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+      // Register Cyrillic font
+      doc.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
+      doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+      doc.setFont("Roboto", "normal");
 
       const pageW = doc.internal.pageSize.getWidth();
       const margin = 15;
@@ -247,7 +264,7 @@ export const requestPdf = action({
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       const dateStr = calculation.calculationDate ?? new Date().toISOString().slice(0, 10);
-      doc.text(`Data: ${dateStr}  |  Rezhim: ${calculation.mode === "direct" ? "Pryamoj" : "Obratnyj"}`, margin, y);
+      doc.text(`Дата: ${dateStr}  |  Режим: ${calculation.mode === "direct" ? "Прямой" : "Обратный"}`, margin, y);
       y += 4;
       if (calculation.title) {
         doc.text(calculation.title, margin, y);
@@ -266,20 +283,20 @@ export const requestPdf = action({
         const t = calculation.totals;
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
-        doc.text("Itogi", margin, y);
+        doc.text("Итоги", margin, y);
         y += 7;
 
         doc.setFontSize(10);
         doc.setTextColor(60, 60, 60);
         const totalsLines = [
-          `Tamozhennaya stoimost: ${fmtRub(t.customsValue)} RUB`,
-          `Poshlina: ${fmtRub(t.duty)} RUB`,
-          `Antidamping: ${fmtRub(t.antidumping)} RUB`,
-          `Aktsiz: ${fmtRub(t.excise)} RUB`,
-          `NDS: ${fmtRub(t.vat)} RUB`,
-          `Tamozhennyi sbor: ${fmtRub(t.customsFee)} RUB`,
-          `Vsego tamozh. platezhej: ${fmtRub(t.totalCustoms)} RUB`,
-          `Sebest. s dostavkoj: ${fmtRub(t.landedCost)} RUB`,
+          `Таможенная стоимость: ${fmtRub(t.customsValue)} руб.`,
+          `Пошлина: ${fmtRub(t.duty)} руб.`,
+          `Антидемпинг: ${fmtRub(t.antidumping)} руб.`,
+          `Акциз: ${fmtRub(t.excise)} руб.`,
+          `НДС: ${fmtRub(t.vat)} руб.`,
+          `Таможенный сбор: ${fmtRub(t.customsFee)} руб.`,
+          `Всего таможенных платежей: ${fmtRub(t.totalCustoms)} руб.`,
+          `Себестоимость с доставкой: ${fmtRub(t.landedCost)} руб.`,
         ];
         for (const line of totalsLines) {
           checkPage(5);
@@ -294,14 +311,14 @@ export const requestPdf = action({
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
         checkPage(12);
-        doc.text("Pozitsii", margin, y);
+        doc.text("Позиции", margin, y);
         y += 7;
 
         doc.setFontSize(8);
 
         // Table header
         const colWidths = [8, 20, 40, 22, 18, 18, 18, 18, 18];
-        const headers = ["#", "TN VED", "Tovar", "Stoimost", "Poshlina", "NDS", "Aktsiz", "Sbor", "Landed"];
+        const headers = ["#", "ТН ВЭД", "Товар", "Стоимость", "Пошлина", "НДС", "Акциз", "Сбор", "Себест."];
 
         checkPage(8);
         doc.setFillColor(245, 245, 245);
@@ -352,7 +369,7 @@ export const requestPdf = action({
         checkPage(20);
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
-        doc.text("Primenyonnye stavki", margin, y);
+        doc.text("Применённые ставки", margin, y);
         y += 7;
 
         doc.setFontSize(9);
@@ -360,7 +377,7 @@ export const requestPdf = action({
         for (const item of items) {
           checkPage(10);
           doc.text(
-            `${item.tnvedCode} - Poshlina: ${item.appliedDutyType ?? "?"} ${item.appliedDutyRate ?? "?"}%, NDS: ${item.appliedVatRate ?? "?"}%, Kurs: ${item.appliedExchangeRate ?? "?"} RUB (${item.appliedExchangeDate ?? "?"})`,
+            `${item.tnvedCode} — Пошлина: ${item.appliedDutyType ?? "?"} ${item.appliedDutyRate ?? "?"}%, НДС: ${item.appliedVatRate ?? "?"}%, Курс: ${item.appliedExchangeRate ?? "?"} руб. (${item.appliedExchangeDate ?? "?"})`,
             margin + 2,
             y,
           );
@@ -374,7 +391,7 @@ export const requestPdf = action({
         checkPage(12);
         doc.setFontSize(14);
         doc.setTextColor(40, 40, 40);
-        doc.text("Preduprezhdeniya", margin, y);
+        doc.text("Предупреждения", margin, y);
         y += 7;
 
         doc.setFontSize(9);
@@ -439,6 +456,17 @@ export const requestXlsx = action({
     // Auth: use getAuthUserId which works with any ctx that has .auth
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    // Rate limit: max 5 exports per hour
+    const rateCheck = await ctx.runQuery(
+      internal.exports.checkExportRateLimitInternal,
+      { userId },
+    );
+    if (rateCheck.limited) {
+      throw new Error(
+        "Превышен лимит: максимум 5 экспорт за 1 ч. Попробуйте позже.",
+      );
+    }
 
     // 1. Load data
     const data = await ctx.runQuery(internal.exports.getExportData, {
@@ -700,6 +728,25 @@ export const requestXlsx = action({
       });
       throw error;
     }
+  },
+});
+
+// ── Internal: check export rate limit ─────────────────────────────
+
+export const checkExportRateLimitInternal = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const cutoff = Date.now() - 3_600_000; // 1 hour window
+    const recent = await ctx.db
+      .query("exports")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.gte(q.field("_creationTime"), cutoff))
+      .collect();
+
+    if (recent.length >= 5) {
+      return { limited: true, count: recent.length };
+    }
+    return { limited: false, count: recent.length };
   },
 });
 

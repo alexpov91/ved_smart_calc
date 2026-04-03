@@ -5,6 +5,7 @@ import { api, internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { getUserId } from "./helpers/auth";
 import { assertCalculationOwner } from "./helpers/ownership";
+import { checkCalculationRateLimit } from "./helpers/rateLimit";
 import { calculateDirect } from "../src/engine/direct";
 import { calculateReverse } from "../src/engine/reverse";
 import type {
@@ -168,6 +169,7 @@ export const requestCalculation = mutation({
   args: { calculationId: v.id("calculations") },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
+    await checkCalculationRateLimit(ctx, userId);
     const calc = await assertCalculationOwner(ctx, args.calculationId, userId);
 
     // Reverse mode: reject if more than 1 item
