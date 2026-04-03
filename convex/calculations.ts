@@ -310,6 +310,33 @@ export const remove = mutation({
   },
 });
 
+// ── Archive stale drafts (cron) ─────────────────────────────────────
+
+export const archiveStaleDrafts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+    const staleDrafts = await ctx.db
+      .query("calculations")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "draft"),
+          q.lt(q.field("createdAt"), sevenDaysAgo),
+        ),
+      )
+      .collect();
+
+    for (const draft of staleDrafts) {
+      await ctx.db.patch(draft._id, { status: "archived" as const });
+    }
+
+    if (staleDrafts.length > 0) {
+      console.log(`[CRON] Archived ${staleDrafts.length} stale drafts`);
+    }
+  },
+});
+
 // ── Internal Queries ────────────────────────────────────────────────
 
 /**

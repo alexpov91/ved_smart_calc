@@ -49,7 +49,7 @@ export function ResultsPanel({
   const hasTotals = calculation !== null;
 
   return (
-    <div className="sticky top-[72px] h-[calc(100vh-72px)] overflow-y-auto p-4">
+    <div className="lg:sticky lg:top-[72px] lg:h-[calc(100vh-72px)] overflow-y-auto p-4">
       <div className="space-y-4">
         {/* Status badge */}
         <div className="flex items-center justify-between">

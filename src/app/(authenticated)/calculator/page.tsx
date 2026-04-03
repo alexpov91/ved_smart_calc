@@ -395,9 +395,9 @@ export default function CalculatorPage() {
       : "draft";
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)]">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)]">
       {/* Left column: Form */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="w-full lg:flex-1 overflow-y-auto p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Mode switcher */}
           <div className="flex items-center justify-between">
@@ -468,7 +468,7 @@ export default function CalculatorPage() {
       </div>
 
       {/* Right column: Results */}
-      <div className="hidden w-[480px] shrink-0 border-l border-slate-800 bg-slate-900/50 lg:block">
+      <div className="w-full lg:w-[480px] shrink-0 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/50">
         <ResultsPanel
           calculation={calcOutput}
           calculationId={calcId}
