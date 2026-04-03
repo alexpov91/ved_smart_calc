@@ -159,7 +159,7 @@ export default function CalculatorPage() {
     // Populate items
     if (calcItems && calcItems.length > 0) {
       setItems(calcItems.map(convexItemToLocal));
-      setItemIds(calcItems.map((ci) => ci._id));
+      setItemIds(calcItems.map((ci: { _id: Id<"calculationItems"> }) => ci._id));
     }
 
     setIsDirty(false);

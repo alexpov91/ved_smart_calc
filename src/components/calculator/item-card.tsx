@@ -163,7 +163,7 @@ export function ItemCard({
               onChange={(e) => updateField("currency", e.target.value)}
               className={selectClass}
             >
-              {meta?.currencies.map((c) => (
+              {meta?.currencies.map((c: string) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
@@ -185,7 +185,7 @@ export function ItemCard({
             onChange={(e) => updateField("incoterms", e.target.value)}
             className={selectClass}
           >
-            {meta?.incoterms.map((i) => (
+            {meta?.incoterms.map((i: string) => (
               <option key={i} value={i}>
                 {i}
               </option>
@@ -201,7 +201,7 @@ export function ItemCard({
             onChange={(e) => updateField("country", e.target.value)}
             className={selectClass}
           >
-            {meta?.countries.map((c) => (
+            {meta?.countries.map((c: { code: string; name: string }) => (
               <option key={c.code} value={c.code}>
                 {c.name}
               </option>
@@ -259,7 +259,7 @@ export function ItemCard({
             onChange={(e) => updateField("unit", e.target.value)}
             className={selectClass}
           >
-            {meta?.units.map((u) => (
+            {meta?.units.map((u: string) => (
               <option key={u} value={u}>
                 {u}
               </option>

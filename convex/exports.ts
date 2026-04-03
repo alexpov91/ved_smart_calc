@@ -169,7 +169,7 @@ function shortId(): string {
 
 export const requestPdf = action({
   args: { calculationId: v.id("calculations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"exports">> => {
     // Auth: actions don't have ctx.db, so we need to use auth
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");
@@ -435,7 +435,7 @@ export const requestPdf = action({
 
 export const requestXlsx = action({
   args: { calculationId: v.id("calculations") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"exports">> => {
     // Auth
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Not authenticated");

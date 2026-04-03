@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, internalAction, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
 import { getUserId } from "./helpers/auth";
 import { assertCalculationOwner } from "./helpers/ownership";
 import { calculateDirect } from "../src/engine/direct";
@@ -619,7 +620,7 @@ export const runCalculation = internalAction({
       }
 
       // 6. Build normalized items (using _id as string for itemId)
-      const normalizedItems: NormalizedItem[] = items.map((item) => ({
+      const normalizedItems: NormalizedItem[] = items.map((item: Doc<"calculationItems">) => ({
         id: item._id,
         tnvedCode: item.tnvedCode,
         productName: item.productName,
@@ -741,7 +742,7 @@ export const runCalculation = internalAction({
         // Direct mode
         if (fxErrors.length > 0) {
           // If critical FX rates are missing, fail early
-          const missingItemCurrencies = items.filter((i) => !fxRates.has(i.currency));
+          const missingItemCurrencies = items.filter((i: Doc<"calculationItems">) => !fxRates.has(i.currency));
           if (missingItemCurrencies.length > 0 || !fxRates.has(calculation.logistics.freightCurrency)) {
             await ctx.runMutation(internal.calculations.applyResult, {
               calculationId: args.calculationId,
@@ -783,7 +784,7 @@ export const runCalculation = internalAction({
       const allWarnings = [...tariffWarnings, ...fxWarnings, ...engineWarnings];
       const allErrors = [...fxErrors, ...engineErrors];
 
-      const itemSnapshots = items.map((item) => {
+      const itemSnapshots = items.map((item: Doc<"calculationItems">) => {
         const tariff = tariffs.get(item.tnvedCode);
         const fxRate = fxRates.get(item.currency);
         const adMatch = antidumpingMap.get(item._id);

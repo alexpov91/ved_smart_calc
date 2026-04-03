@@ -29,7 +29,7 @@ export function CalculationList() {
 
   return (
     <div className="space-y-3">
-      {items.map((calc) => (
+      {items.map((calc: { _id: string; title?: string; mode: string; status: string; createdAt: number; totals?: Record<string, number> }) => (
         <CalculationCard
           key={calc._id}
           id={calc._id}
