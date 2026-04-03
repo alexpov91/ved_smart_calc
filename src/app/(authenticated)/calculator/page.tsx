@@ -471,6 +471,7 @@ export default function CalculatorPage() {
       <div className="hidden w-[480px] shrink-0 border-l border-slate-800 bg-slate-900/50 lg:block">
         <ResultsPanel
           calculation={calcOutput}
+          calculationId={calcId}
           logistics={{
             freight: parseFloat(logistics.freight) || undefined,
             insurance: parseFloat(logistics.insurance) || undefined,
