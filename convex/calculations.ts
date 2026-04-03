@@ -202,6 +202,12 @@ export const updateMeta = mutation({
     title: v.optional(v.string()),
     calculationDate: v.optional(v.string()),
     mode: v.optional(v.union(v.literal("direct"), v.literal("reverse"))),
+    retailParams: v.optional(
+      v.object({
+        retailPrice: v.number(),
+        desiredMargin: v.number(),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await getUserId(ctx);
@@ -212,6 +218,7 @@ export const updateMeta = mutation({
     if (args.calculationDate !== undefined)
       updates.calculationDate = args.calculationDate;
     if (args.mode !== undefined) updates.mode = args.mode;
+    if (args.retailParams !== undefined) updates.retailParams = args.retailParams;
 
     await ctx.db.patch(args.calculationId, updates);
   },

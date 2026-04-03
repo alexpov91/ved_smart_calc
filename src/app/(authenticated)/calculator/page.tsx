@@ -7,6 +7,7 @@ import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Plus } from "lucide-react";
 import { ModeSwitcher, type CalcMode } from "@/components/calculator/mode-switcher";
+import { ReverseParams } from "@/components/calculator/reverse-params";
 import { ItemCard, type ItemData, createEmptyItem } from "@/components/calculator/item-card";
 import {
   LogisticsSection,
@@ -115,6 +116,8 @@ export default function CalculatorPage() {
   );
   const [isDirty, setIsDirty] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [retailPrice, setRetailPrice] = useState("");
+  const [desiredMargin, setDesiredMargin] = useState("");
 
   // Track Convex item IDs so we can update existing items
   const [itemIds, setItemIds] = useState<(Id<"calculationItems"> | null)[]>([null]);
@@ -146,6 +149,12 @@ export default function CalculatorPage() {
       transportAfterBorder:
         l.transportAfterBorder != null ? String(l.transportAfterBorder) : "",
     });
+
+    // Populate retail params
+    if (calculation.retailParams) {
+      setRetailPrice(String(calculation.retailParams.retailPrice));
+      setDesiredMargin(String(calculation.retailParams.desiredMargin));
+    }
 
     // Populate items
     if (calcItems && calcItems.length > 0) {
@@ -255,9 +264,19 @@ export default function CalculatorPage() {
         calculationId: calcId,
         logistics: logisticsPayload,
       });
+      // Build retailParams if reverse mode
+      const retailParamsUpdate =
+        mode === "reverse" && (parseFloat(retailPrice) || parseFloat(desiredMargin))
+          ? {
+              retailPrice: parseFloat(retailPrice) || 0,
+              desiredMargin: parseFloat(desiredMargin) || 0,
+            }
+          : undefined;
+
       await updateMeta({
         calculationId: calcId,
         mode,
+        retailParams: retailParamsUpdate,
       });
 
       // Sync items: update existing, add new
@@ -284,11 +303,21 @@ export default function CalculatorPage() {
       return calcId;
     } else {
       // ── Create new calculation ─────────────────────────────────────
+      // Build retailParams if reverse mode
+      const retailParams =
+        mode === "reverse" && (parseFloat(retailPrice) || parseFloat(desiredMargin))
+          ? {
+              retailPrice: parseFloat(retailPrice) || 0,
+              desiredMargin: parseFloat(desiredMargin) || 0,
+            }
+          : undefined;
+
       const newCalcId = await createCalc({
         mode,
         currencyMode: "USD",
         logistics: logisticsPayload,
         distributionMethod,
+        retailParams,
       });
 
       // Add all items
@@ -315,6 +344,8 @@ export default function CalculatorPage() {
     itemIds,
     logistics,
     mode,
+    retailPrice,
+    desiredMargin,
     createCalc,
     addItem,
     updateItemMut,
@@ -383,8 +414,28 @@ export default function CalculatorPage() {
             </div>
           )}
 
-          {/* Item cards */}
-          {items.map((item, index) => (
+          {/* Reverse mode params */}
+          {mode === "reverse" && (
+            <>
+              <ReverseParams
+                retailPrice={retailPrice}
+                desiredMargin={desiredMargin}
+                onRetailPriceChange={(v) => { setRetailPrice(v); setIsDirty(true); }}
+                onDesiredMarginChange={(v) => { setDesiredMargin(v); setIsDirty(true); }}
+              />
+              <p className="text-xs text-slate-500">
+                Обратный расчёт работает для одного товара
+              </p>
+              {items.length > 1 && (
+                <div className="rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-2 text-sm text-amber-300">
+                  Для обратного расчёта используется только первая позиция
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Item cards — in reverse mode show only first */}
+          {(mode === "reverse" ? items.slice(0, 1) : items).map((item, index) => (
             <ItemCard
               key={index}
               item={item}
@@ -392,19 +443,21 @@ export default function CalculatorPage() {
               onChange={(updated) => handleItemChange(index, updated)}
               onDuplicate={() => handleDuplicate(index)}
               onRemove={() => handleRemove(index)}
-              canRemove={items.length > 1}
+              canRemove={mode !== "reverse" && items.length > 1}
             />
           ))}
 
-          {/* Add item button */}
-          <button
-            type="button"
-            onClick={handleAddItem}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-700 py-3 text-sm text-slate-500 transition-colors hover:border-slate-500 hover:text-slate-300"
-          >
-            <Plus className="h-4 w-4" />
-            Добавить позицию
-          </button>
+          {/* Add item button (hidden in reverse mode) */}
+          {mode !== "reverse" && (
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-slate-700 py-3 text-sm text-slate-500 transition-colors hover:border-slate-500 hover:text-slate-300"
+            >
+              <Plus className="h-4 w-4" />
+              Добавить позицию
+            </button>
+          )}
 
           {/* Logistics */}
           <LogisticsSection data={logistics} onChange={handleLogisticsChange} />
