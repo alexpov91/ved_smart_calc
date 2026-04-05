@@ -34,7 +34,7 @@ yarn-error.log*
 .env*
 
 # convex
-convex/_generated/
+# convex/_generated/ -- committed for production builds
 
 # superpowers brainstorm mockups
 .superpowers/

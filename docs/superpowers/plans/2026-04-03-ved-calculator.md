@@ -214,7 +214,7 @@ export default config;
 
 ```bash
 # .env.local
-NEXT_PUBLIC_CONVEX_URL=http://192.168.1.218:3210
+NEXT_PUBLIC_CONVEX_URL=http://127.0.0.1:3210
 ```
 
 - [ ] **Step 8: Create `.gitignore` and initial commit**
@@ -571,7 +571,7 @@ Convex Auth needs a signing key. Generate one:
 npx @convex-dev/auth generate-keys
 ```
 
-Add the private key to Convex environment variables via dashboard (http://192.168.1.218:6791) → Settings → Environment Variables:
+Add the private key to Convex environment variables via dashboard (http://127.0.0.1:6791) → Settings → Environment Variables:
 - `AUTH_PRIVATE_KEY` = generated key
 
 - [ ] **Step 6: Create providers component**
