@@ -31,9 +31,14 @@ const levelConfig = {
 export function ResultsWarnings({ warnings }: ResultsWarningsProps) {
   if (warnings.length === 0) return null;
 
+  // Deduplicate warnings by message
+  const unique = warnings.filter(
+    (w, i, arr) => arr.findIndex((x) => x.message === w.message) === i
+  );
+
   return (
     <div className="space-y-2">
-      {warnings.map((w, i) => {
+      {unique.map((w, i) => {
         const cfg = levelConfig[w.level];
         const IconComponent = cfg.Icon;
         return (

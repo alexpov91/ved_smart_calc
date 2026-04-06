@@ -82,6 +82,7 @@ export function ItemCard({
   }
 
   const exchangeRate = exchangeRateData?.rate ?? null;
+  const exchangeRateDate = exchangeRateData?.date ?? null;
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
@@ -173,6 +174,11 @@ export function ItemCard({
             {exchangeRate !== null && (
               <span className="shrink-0 text-xs text-slate-500 whitespace-nowrap">
                 {exchangeRate.toFixed(2)} ₽
+                {exchangeRateDate && (
+                  <span className="ml-1 text-slate-600">
+                    ({exchangeRateDate})
+                  </span>
+                )}
               </span>
             )}
           </div>
