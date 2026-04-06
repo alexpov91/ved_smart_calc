@@ -5,7 +5,7 @@ export const getCalculationMeta = query({
   args: {},
   handler: async () => {
     return {
-      incoterms: ["EXW", "FOB", "CIF", "DAP", "DDP", "CPT", "CFR"],
+      incoterms: ["EXW", "FCA", "FAS", "FOB", "CFR", "CIF", "CPT", "CIP", "DAP", "DPU", "DDP"],
       currencies: ["USD", "EUR", "CNY", "TRY", "GBP"],
       units: ["шт", "кг", "пара", "литр", "м", "м²", "м³"],
       countries: [

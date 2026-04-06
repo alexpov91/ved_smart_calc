@@ -100,7 +100,6 @@ export function TnvedAutocomplete({
                       }
                     : null,
                 });
-                onChange(item.code);
                 setOpen(false);
               }}
             >

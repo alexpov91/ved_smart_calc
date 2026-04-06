@@ -17,7 +17,7 @@ export function ResultsLandedCost({
   return (
     <div className="rounded-lg border border-amber-700 bg-slate-900 p-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
-        Полная себестоимость (Landed Cost)
+        Полная себестоимость
       </p>
       <p className="mt-2 text-3xl font-bold text-amber-400">
         {formatRub(landedCost)}

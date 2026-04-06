@@ -62,6 +62,56 @@ describe("adjustForIncoterms", () => {
     expect(result).toBe(50000);
   });
 
+  it("FCA: adds freight and insurance", () => {
+    const result = adjustForIncoterms({
+      invoiceValue: 50000,
+      incoterms: "FCA",
+      freightToBorder: 6000,
+      insurance: 500,
+    });
+    expect(result).toBe(56500);
+  });
+
+  it("FAS: adds freight and insurance", () => {
+    const result = adjustForIncoterms({
+      invoiceValue: 50000,
+      incoterms: "FAS",
+      freightToBorder: 4000,
+      insurance: 500,
+    });
+    expect(result).toBe(54500);
+  });
+
+  it("CIP: returns invoice value unchanged", () => {
+    const result = adjustForIncoterms({
+      invoiceValue: 50000,
+      incoterms: "CIP",
+      freightToBorder: 5000,
+      insurance: 500,
+    });
+    expect(result).toBe(50000);
+  });
+
+  it("DPU: returns invoice value unchanged", () => {
+    const result = adjustForIncoterms({
+      invoiceValue: 50000,
+      incoterms: "DPU",
+      freightToBorder: 5000,
+      insurance: 500,
+    });
+    expect(result).toBe(50000);
+  });
+
+  it("DDP: returns invoice value unchanged", () => {
+    const result = adjustForIncoterms({
+      invoiceValue: 50000,
+      incoterms: "DDP",
+      freightToBorder: 5000,
+      insurance: 500,
+    });
+    expect(result).toBe(50000);
+  });
+
   it("handles case-insensitive incoterms", () => {
     const result = adjustForIncoterms({
       invoiceValue: 50000,

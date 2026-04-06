@@ -77,6 +77,7 @@ export function ItemCard({
       tnvedCode: selection.code,
       tnvedName: selection.name,
       tnvedTariff: selection.tariff,
+      ...(item.productName === "" && { productName: selection.name }),
     });
   }
 

@@ -13,18 +13,25 @@ export function adjustForIncoterms(input: IncotermsInput): number {
   const { invoiceValue, incoterms, freightToBorder, insurance } = input;
 
   switch (incoterms.toUpperCase()) {
+    // Group C: freight + insurance included
     case "CIF":
+    case "CIP":
       return invoiceValue;
+    // Group C: freight included, no insurance
+    case "CFR":
+    case "CPT":
+      return invoiceValue + insurance;
+    // Group F: no freight, no insurance
+    case "EXW":
+    case "FCA":
+    case "FAS":
     case "FOB":
       return invoiceValue + freightToBorder + insurance;
-    case "EXW":
-      return invoiceValue + freightToBorder + insurance;
+    // Group D: delivery included
     case "DAP":
+    case "DPU":
     case "DDP":
       return invoiceValue;
-    case "CPT":
-    case "CFR":
-      return invoiceValue + insurance;
     default:
       return invoiceValue + freightToBorder + insurance;
   }
