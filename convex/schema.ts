@@ -118,6 +118,7 @@ export default defineSchema({
       freightCurrency: v.string(),
       insurance: v.optional(v.number()),
       insuranceAuto: v.optional(v.boolean()),
+      insuranceRate: v.optional(v.number()),
       broker: v.optional(v.number()),
       certification: v.optional(v.number()),
       marking: v.optional(v.number()),

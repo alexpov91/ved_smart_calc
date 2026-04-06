@@ -70,16 +70,17 @@ export function calculateDirect(input: CalculationInput): CalculationOutput {
   );
 
   // Calculate insurance amounts per item
-  // If insuranceAuto, insurance = 0.5% of invoice value per item (in freight currency)
+  // If insuranceAuto, insurance = rate% of invoice value per item (default 0.1%)
   // If absolute, allocate like freight
+  const autoInsuranceRate = logistics.insuranceRate ?? 0.001;
   let insuranceShares: Map<string, number>;
   if (logistics.insuranceAuto) {
     insuranceShares = new Map();
     for (const item of items) {
-      // Auto insurance: 0.5% of invoice value in original currency
+      // Auto insurance: rate% of invoice value in original currency
       // We need it in freight currency for CIF adjustment. Since freight and invoice
       // may differ in currency, we calculate in item's currency and use that.
-      insuranceShares.set(item.id, r2(item.invoiceValue * 0.005));
+      insuranceShares.set(item.id, r2(item.invoiceValue * autoInsuranceRate));
     }
   } else if (logistics.insurance != null && logistics.insurance > 0) {
     const insAllocItems = items.map((item) => ({

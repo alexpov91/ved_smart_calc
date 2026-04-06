@@ -52,7 +52,8 @@ export interface ShipmentLogistics {
   freight: number;               // in freightCurrency
   freightCurrency: string;
   insurance?: number;            // absolute amount in freightCurrency
-  insuranceAuto?: boolean;       // if true, auto 0.5% of invoice value
+  insuranceAuto?: boolean;       // if true, auto % of invoice value
+  insuranceRate?: number;        // rate for auto insurance (e.g. 0.001 = 0.1%), default 0.001
   broker?: number;               // RUB
   certification?: number;        // RUB
   marking?: number;              // RUB

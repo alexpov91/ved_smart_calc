@@ -10,6 +10,7 @@ export interface LogisticsData {
   freightCurrency: string;
   insurance: string;
   insuranceAuto: boolean;
+  insuranceRate: string;
   distributionMethod: string;
   broker: string;
   certification: string;
@@ -25,6 +26,7 @@ export function createEmptyLogistics(): LogisticsData {
     freightCurrency: "USD",
     insurance: "",
     insuranceAuto: true,
+    insuranceRate: "0.1",
     distributionMethod: "by_weight",
     broker: "",
     certification: "",
@@ -65,7 +67,7 @@ export function LogisticsSection({ data, onChange }: LogisticsSectionProps) {
     );
   }
   if (data.insuranceAuto) {
-    summaryParts.push("Страховка: авто");
+    summaryParts.push(`Страховка: ${data.insuranceRate || "0.1"}%`);
   } else if (data.insurance) {
     summaryParts.push(
       `Страховка: ${Number(data.insurance).toLocaleString("ru-RU")}`
@@ -150,9 +152,23 @@ export function LogisticsSection({ data, onChange }: LogisticsSectionProps) {
                     }
                     className="h-4 w-4 rounded border-slate-700 bg-slate-950 accent-emerald-500"
                   />
-                  Авто 0.5%
+                  Авто
                 </label>
-                {!data.insuranceAuto && (
+                {data.insuranceAuto ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="number"
+                      value={data.insuranceRate}
+                      onChange={(e) => updateField("insuranceRate", e.target.value)}
+                      placeholder="0.1"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      className={`${inputClass} w-24`}
+                    />
+                    <span className="text-sm text-slate-400">%</span>
+                  </div>
+                ) : (
                   <input
                     type="number"
                     value={data.insurance}
