@@ -235,95 +235,175 @@ export const requestPdf = action({
       // 4. Generate PDF using jspdf
       const { jsPDF } = await import("jspdf");
       const { ROBOTO_REGULAR_BASE64 } = await import("./fonts/robotoRegular");
+      const { ROBOTO_BOLD_BASE64 } = await import("./fonts/robotoBold");
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-      // Register Cyrillic font
+      // Register fonts (Cyrillic-capable)
       doc.addFileToVFS("Roboto-Regular.ttf", ROBOTO_REGULAR_BASE64);
       doc.addFont("Roboto-Regular.ttf", "Roboto", "normal");
-      doc.setFont("Roboto", "normal");
+      doc.addFileToVFS("Roboto-Bold.ttf", ROBOTO_BOLD_BASE64);
+      doc.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+
+      // Color palette (light professional theme with site accents)
+      const C = {
+        heading: [15, 23, 42] as const,       // slate-900
+        text: [30, 41, 59] as const,           // slate-800
+        muted: [100, 116, 139] as const,       // slate-500
+        light: [148, 163, 184] as const,       // slate-400
+        emerald: [22, 163, 74] as const,       // emerald-600
+        amber: [217, 119, 6] as const,         // amber-600
+        tableBg: [240, 253, 244] as const,     // emerald-50
+        stripeBg: [248, 250, 252] as const,    // slate-50
+        border: [226, 232, 240] as const,      // slate-200
+      };
 
       const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
       const margin = 15;
       const contentW = pageW - margin * 2;
       let y = margin;
 
+      const setFont = (style: "normal" | "bold" = "normal", size = 10) => {
+        doc.setFont("Roboto", style);
+        doc.setFontSize(size);
+      };
+
       // Helper: add new page if needed
       const checkPage = (needed: number) => {
-        if (y + needed > doc.internal.pageSize.getHeight() - margin) {
+        if (y + needed > pageH - 15) {
+          // Footer on current page
+          addFooter();
           doc.addPage();
           y = margin;
         }
       };
 
+      const addFooter = () => {
+        setFont("normal", 7);
+        doc.setTextColor(...C.light);
+        doc.text(
+          `VED Smart Calc  |  ${new Date().toISOString().slice(0, 10)}`,
+          margin,
+          pageH - 8,
+        );
+      };
+
+      // Helper: draw a labeled value row
+      const drawRow = (label: string, value: string, indent = 0) => {
+        checkPage(5);
+        setFont("normal", 9);
+        doc.setTextColor(...C.text);
+        doc.text(label, margin + 2 + indent, y);
+        doc.text(value, pageW - margin - 2, y, { align: "right" });
+        y += 5;
+      };
+
       // ── Header ──
-      doc.setFontSize(18);
-      doc.setTextColor(40, 40, 40);
+      setFont("bold", 20);
+      doc.setTextColor(...C.heading);
       doc.text("VED Smart Calc", margin, y);
       y += 8;
 
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
+      setFont("normal", 9);
+      doc.setTextColor(...C.muted);
       const dateStr = calculation.calculationDate ?? new Date().toISOString().slice(0, 10);
-      doc.text(`Дата: ${dateStr}  |  Режим: ${calculation.mode === "direct" ? "Прямой" : "Обратный"}`, margin, y);
+      const modeStr = calculation.mode === "direct" ? "Прямой расчёт" : "Обратный расчёт";
+      doc.text(`${dateStr}  \u2022  ${modeStr}`, margin, y);
       y += 4;
       if (calculation.title) {
+        doc.setTextColor(...C.text);
         doc.text(calculation.title, margin, y);
         y += 4;
       }
-      y += 4;
+      y += 2;
 
-      // ── Green accent line ──
-      doc.setDrawColor(34, 197, 94);
-      doc.setLineWidth(0.8);
+      // Green accent line
+      doc.setDrawColor(...C.emerald);
+      doc.setLineWidth(1);
       doc.line(margin, y, pageW - margin, y);
-      y += 8;
+      y += 10;
 
-      // ── Totals Summary ──
+      // ── Summary Boxes ──
       if (calculation.totals) {
         const t = calculation.totals;
-        doc.setFontSize(14);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Итоги", margin, y);
-        y += 7;
 
-        doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        const totalsLines = [
-          `Таможенная стоимость: ${fmtRub(t.customsValue)} руб.`,
-          `Пошлина: ${fmtRub(t.duty)} руб.`,
-          `Антидемпинг: ${fmtRub(t.antidumping)} руб.`,
-          `Акциз: ${fmtRub(t.excise)} руб.`,
-          `НДС: ${fmtRub(t.vat)} руб.`,
-          `Таможенный сбор: ${fmtRub(t.customsFee)} руб.`,
-          `Всего таможенных платежей: ${fmtRub(t.totalCustoms)} руб.`,
-          `Себестоимость с доставкой: ${fmtRub(t.landedCost)} руб.`,
-        ];
-        for (const line of totalsLines) {
-          checkPage(5);
-          doc.text(line, margin + 2, y);
-          y += 5;
-        }
+        // Box: Итого таможенных платежей
+        checkPage(20);
+        doc.setDrawColor(...C.emerald);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(margin, y, contentW, 16, 2, 2, "S");
+
+        setFont("bold", 8);
+        doc.setTextColor(...C.muted);
+        doc.text("ИТОГО ТАМОЖЕННЫХ ПЛАТЕЖЕЙ", margin + 4, y + 5);
+
+        setFont("bold", 16);
+        doc.setTextColor(...C.amber);
+        doc.text(`${fmtRub(t.totalCustoms)} \u20BD`, margin + 4, y + 12);
+
+        setFont("normal", 8);
+        doc.setTextColor(...C.muted);
+        const pct = t.customsValue > 0 ? ((t.totalCustoms / t.customsValue) * 100).toFixed(1) : "0";
+        doc.text(`${pct}% от таможенной стоимости`, pageW - margin - 4, y + 12, { align: "right" });
+        y += 20;
+
+        // Box: Полная себестоимость
+        checkPage(20);
+        doc.setDrawColor(...C.amber);
+        doc.roundedRect(margin, y, contentW, 16, 2, 2, "S");
+
+        setFont("bold", 8);
+        doc.setTextColor(...C.muted);
+        doc.text("ПОЛНАЯ СЕБЕСТОИМОСТЬ", margin + 4, y + 5);
+
+        setFont("bold", 16);
+        doc.setTextColor(...C.amber);
+        doc.text(`${fmtRub(t.landedCost)} \u20BD`, margin + 4, y + 12);
+        y += 20;
+
+        // Detailed breakdown
+        checkPage(50);
+        setFont("bold", 10);
+        doc.setTextColor(...C.heading);
+        doc.text("ТАМОЖЕННЫЕ ПЛАТЕЖИ", margin, y);
+        y += 6;
+
+        // Thin line
+        doc.setDrawColor(...C.border);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y, pageW - margin, y);
+        y += 4;
+
+        drawRow("Таможенная стоимость", `${fmtRub(t.customsValue)} \u20BD`);
+        drawRow("Пошлина", `${fmtRub(t.duty)} \u20BD`);
+        if (t.antidumping > 0) drawRow("Антидемпинг", `${fmtRub(t.antidumping)} \u20BD`);
+        if (t.excise > 0) drawRow("Акциз", `${fmtRub(t.excise)} \u20BD`);
+        drawRow("НДС", `${fmtRub(t.vat)} \u20BD`);
+        drawRow("Таможенный сбор", `${fmtRub(t.customsFee)} \u20BD`);
         y += 4;
       }
 
       // ── Items Table ──
       if (items.length > 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(40, 40, 40);
-        checkPage(12);
-        doc.text("Позиции", margin, y);
+        checkPage(16);
+        setFont("bold", 10);
+        doc.setTextColor(...C.heading);
+        doc.text("ПОЗИЦИИ", margin, y);
         y += 7;
 
-        doc.setFontSize(8);
-
         // Table header
-        const colWidths = [8, 20, 40, 22, 18, 18, 18, 18, 18];
-        const headers = ["#", "ТН ВЭД", "Товар", "Стоимость", "Пошлина", "НДС", "Акциз", "Сбор", "Себест."];
+        const colWidths = [8, 22, 38, 22, 18, 18, 14, 14, 26];
+        const headers = ["#", "ТН ВЭД", "Товар", "Там. стоим.", "Пошлина", "НДС", "Акциз", "Сбор", "Себестоимость"];
 
         checkPage(8);
-        doc.setFillColor(245, 245, 245);
+        doc.setFillColor(...C.tableBg);
         doc.rect(margin, y - 3, contentW, 6, "F");
-        doc.setTextColor(80, 80, 80);
+        doc.setDrawColor(...C.border);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y + 3, pageW - margin, y + 3);
+
+        setFont("bold", 7);
+        doc.setTextColor(...C.emerald);
         let x = margin;
         for (let i = 0; i < headers.length; i++) {
           doc.text(headers[i], x + 1, y);
@@ -332,28 +412,29 @@ export const requestPdf = action({
         y += 5;
 
         // Table rows
-        doc.setTextColor(60, 60, 60);
+        setFont("normal", 7);
         for (let idx = 0; idx < items.length; idx++) {
           const item = items[idx];
           const r = item.result;
           checkPage(6);
 
           if (idx % 2 === 1) {
-            doc.setFillColor(250, 250, 250);
+            doc.setFillColor(...C.stripeBg);
             doc.rect(margin, y - 3.5, contentW, 5.5, "F");
           }
 
+          doc.setTextColor(...C.text);
           x = margin;
           const rowData = [
             String(idx + 1),
             item.tnvedCode,
-            item.productName.length > 22 ? item.productName.slice(0, 20) + ".." : item.productName,
-            r ? fmtRub(r.customsValue) : "-",
-            r ? fmtRub(r.duty) : "-",
-            r ? fmtRub(r.vat) : "-",
-            r ? fmtRub(r.excise) : "-",
-            r ? fmtRub(r.customsFee) : "-",
-            r ? fmtRub(r.landedCost) : "-",
+            item.productName.length > 25 ? item.productName.slice(0, 23) + ".." : item.productName,
+            r ? fmtRub(r.customsValue) : "\u2014",
+            r ? fmtRub(r.duty) : "\u2014",
+            r ? fmtRub(r.vat) : "\u2014",
+            r ? fmtRub(r.excise) : "\u2014",
+            r ? fmtRub(r.customsFee) : "\u2014",
+            r ? fmtRub(r.landedCost) : "\u2014",
           ];
           for (let i = 0; i < rowData.length; i++) {
             doc.text(rowData[i], x + 1, y);
@@ -361,27 +442,36 @@ export const requestPdf = action({
           }
           y += 5;
         }
-        y += 4;
+
+        // Bottom border
+        doc.setDrawColor(...C.border);
+        doc.line(margin, y - 2, pageW - margin, y - 2);
+        y += 5;
       }
 
       // ── Applied Rates ──
       if (items.length > 0 && items[0].appliedDutyRate !== undefined) {
-        checkPage(20);
-        doc.setFontSize(14);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Применённые ставки", margin, y);
-        y += 7;
+        checkPage(14);
+        setFont("bold", 10);
+        doc.setTextColor(...C.heading);
+        doc.text("ПРИМЕНЁННЫЕ СТАВКИ", margin, y);
+        y += 6;
 
-        doc.setFontSize(9);
-        doc.setTextColor(60, 60, 60);
+        doc.setDrawColor(...C.border);
+        doc.setLineWidth(0.2);
+        doc.line(margin, y, pageW - margin, y);
+        y += 4;
+
+        setFont("normal", 8);
+        doc.setTextColor(...C.muted);
         for (const item of items) {
-          checkPage(10);
+          checkPage(6);
           doc.text(
-            `${item.tnvedCode} — Пошлина: ${item.appliedDutyType ?? "?"} ${item.appliedDutyRate ?? "?"}%, НДС: ${item.appliedVatRate ?? "?"}%, Курс: ${item.appliedExchangeRate ?? "?"} руб. (${item.appliedExchangeDate ?? "?"})`,
+            `${item.tnvedCode}  \u2014  ${item.appliedDutyType ?? "?"} ${item.appliedDutyRate ?? "?"}%,  НДС ${item.appliedVatRate ?? "?"}%,  курс ${item.appliedExchangeRate ?? "?"} \u20BD (${item.appliedExchangeDate ?? "?"})`,
             margin + 2,
             y,
           );
-          y += 5;
+          y += 4.5;
         }
         y += 4;
       }
@@ -389,30 +479,23 @@ export const requestPdf = action({
       // ── Warnings ──
       if (calculation.warnings && calculation.warnings.length > 0) {
         checkPage(12);
-        doc.setFontSize(14);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Предупреждения", margin, y);
-        y += 7;
+        setFont("bold", 10);
+        doc.setTextColor(...C.heading);
+        doc.text("ПРЕДУПРЕЖДЕНИЯ", margin, y);
+        y += 6;
 
-        doc.setFontSize(9);
+        setFont("normal", 8);
         doc.setTextColor(180, 120, 20);
         for (const w of calculation.warnings) {
-          checkPage(6);
-          doc.text(`[${w.level}] ${w.message}`, margin + 2, y);
-          y += 5;
+          checkPage(5);
+          doc.text(`\u26A0  ${w.message}`, margin + 2, y);
+          y += 4.5;
         }
         y += 4;
       }
 
-      // ── Footer ──
-      const pageH = doc.internal.pageSize.getHeight();
-      doc.setFontSize(7);
-      doc.setTextColor(160, 160, 160);
-      doc.text(
-        "VED Smart Calc | generated " + new Date().toISOString().slice(0, 10),
-        margin,
-        pageH - 8,
-      );
+      // Footer on last page
+      addFooter();
 
       // 5. Export to buffer
       const pdfBuffer = doc.output("arraybuffer");
